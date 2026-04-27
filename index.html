@@ -1,57 +1,245 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Игра для Веры</title>
     <style>
         body {
-            background: #ffebee;
-            font-family: Arial;
-            text-align: center;
+            margin: 0;
+            padding: 0;
+            background: #fce4ec;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
             overflow: hidden;
+            font-family: Arial, sans-serif;
+            touch-action: manipulation;
+            user-select: none;
         }
-        .heart {
-            position: absolute;
-            color: #ff4081;
-            font-size: 24px;
-            animation: float 4s infinite;
+        canvas {
+            background: #fff;
+            border: 3px solid #ff4081;
+            border-radius: 10px;
+            display: none;
+            max-width: 100%;
+            height: auto;
         }
-        @keyframes float {
-            0% { transform: translateY(100vh); opacity: 1; }
-            100% { transform: translateY(-10vh); opacity: 0; }
-        }
-        .container {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        #startScreen, #endScreen {
+            text-align: center;
             background: white;
             padding: 30px;
             border-radius: 20px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            box-shadow: 0 0 30px rgba(255,64,129,0.3);
         }
-        h1 { color: #ff4081; }
-        p { color: #333; font-size: 18px; }
+        button {
+            background: #ff4081;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        button:active { transform: scale(0.95); }
+        .heart { 
+            color: #ff4081;
+            font-size: 40px;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        p { font-size: 20px; color: #333; margin: 10px 0; }
+        h2 { color: #ff4081; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>💖 Для Веры 💖</h1>
-        <p>Ты самая тёплая и родная</p>
-        <p>Твоя улыбка — как солнце</p>
-        <p>Ты делаешь этот мир лучше</p>
-        <p>Я рад, что ты есть 🤗</p>
+
+    <!-- Стартовый экран -->
+    <div id="startScreen">
+        <div class="heart">💖</div>
+        <h2>Игра для Веры</h2>
+        <p>Прыгай через препятствия!<br>Тапай по экрану 📱</p>
+        <p style="font-size:14px; color:#888;">Дойди до конца, там сюрприз 😉</p>
+        <button onclick="startGame()">▶ Играть</button>
     </div>
 
+    <!-- Финальный экран (скрыт) -->
+    <div id="endScreen" style="display: none;">
+        <div class="heart">💖</div>
+        <h2>Вера, ты невероятна!</h2>
+        <p>Ты дошла до конца 💪</p>
+        <p>Ты самая родная и тёплая</p>
+        <p>Твоя улыбка — как эти сердечки</p>
+        <p>Спасибо, что ты есть 🤗</p>
+        <div style="font-size: 50px;">💖💋🌸</div>
+        <button onclick="restartGame()">🔄 Ещё раз</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
     <script>
-        setInterval(() => {
-            let heart = document.createElement('div');
-            heart.className = 'heart';
-            heart.innerHTML = '❤️';
-            heart.style.left = Math.random() * 100 + '%';
-            heart.style.animationDuration = (Math.random() * 3 + 2) + 's';
-            document.body.appendChild(heart);
-            setTimeout(() => heart.remove(), 4000);
-        }, 300);
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const endScreen = document.getElementById('endScreen');
+
+        // Подгоняем размер под экран телефона
+        const W = Math.min(window.innerWidth * 0.95, 400);
+        const H = 250;
+        canvas.width = W;
+        canvas.height = H;
+
+        let player, obstacles, score, gameOver, gameRunning, winScore;
+        let frame = 0;
+        let touchHeld = false;
+
+        // Игрок (сердечко)
+        class Player {
+            constructor() {
+                this.x = 60;
+                this.y = H - 40;
+                this.vy = 0;
+                this.grounded = true;
+                this.size = 20;
+            }
+            jump() {
+                if (this.grounded) {
+                    this.vy = -9;
+                    this.grounded = false;
+                }
+            }
+            update() {
+                this.y += this.vy;
+                this.vy += 0.5;
+                if (this.y >= H - 40) {
+                    this.y = H - 40;
+                    this.vy = 0;
+                    this.grounded = true;
+                }
+            }
+            draw() {
+                ctx.font = `${this.size * 2}px Arial`;
+                ctx.fillText('❤️', this.x - this.size, this.y);
+            }
+        }
+
+        class Obstacle {
+            constructor(speed) {
+                this.x = W;
+                this.y = H - 25;
+                this.w = 15 + Math.random() * 10;
+                this.h = 20 + Math.random() * 15;
+                this.speed = speed;
+            }
+            update() { this.x -= this.speed; }
+            draw() {
+                ctx.fillStyle = '#ff4081';
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+                ctx.fillStyle = '#fff';
+                ctx.font = '14px Arial';
+                ctx.fillText('🌵', this.x, this.y + 15);
+            }
+        }
+
+        function startGame() {
+            startScreen.style.display = 'none';
+            endScreen.style.display = 'none';
+            canvas.style.display = 'block';
+            player = new Player();
+            obstacles = [];
+            score = 0;
+            winScore = 40; // Сколько перепрыгнуть до победы
+            gameOver = false;
+            gameRunning = true;
+            touchHeld = false;
+            requestAnimationFrame(gameLoop);
+        }
+
+        function endGame(won) {
+            gameRunning = false;
+            canvas.style.display = 'none';
+            if (won) {
+                endScreen.style.display = 'block';
+            } else {
+                // Если проиграл, показываем то же окно с поддержкой
+                endScreen.style.display = 'block';
+                document.querySelector('#endScreen h2').innerText = 'Почти получилось!';
+                document.querySelector('#endScreen p:first-of-type').innerText = 'Попробуй ещё раз, Вера 💪';
+            }
+        }
+
+        function restartGame() {
+            endScreen.style.display = 'none';
+            startGame();
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            frame++;
+            ctx.clearRect(0, 0, W, H);
+
+            // Обновление игрока
+            player.update();
+            player.draw();
+
+            // Генерация препятствий
+            if (frame % 50 === 0) {
+                obstacles.push(new Obstacle(4 + score * 0.1));
+            }
+
+            // Обновление препятствий
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].update();
+                obstacles[i].draw();
+
+                // Коллизия
+                if (obstacles[i].x < player.x + 15 && obstacles[i].x + obstacles[i].w > player.x - 15 &&
+                    player.y < obstacles[i].y + obstacles[i].h && player.y > obstacles[i].y - 20) {
+                    endGame(false);
+                    return;
+                }
+
+                // Препятствие пройдено
+                if (obstacles[i].x + obstacles[i].w < 0) {
+                    obstacles.splice(i, 1);
+                    score++;
+                }
+            }
+
+            // Отрисовка счёта
+            ctx.fillStyle = '#ff4081';
+            ctx.font = 'bold 20px Arial';
+            ctx.fillText(`💖 ${score}/${winScore}`, 20, 30);
+
+            // Проверка победы
+            if (score >= winScore) {
+                endGame(true);
+                return;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Управление: тап по экрану
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (player) player.jump();
+        });
+        canvas.addEventListener('click', () => {
+            if (player) player.jump();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && player) {
+                e.preventDefault();
+                player.jump();
+            }
+        });
     </script>
 </body>
 </html>
