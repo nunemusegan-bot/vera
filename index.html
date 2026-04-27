@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            background: #ffebee;
+            font-family: Arial;
+            text-align: center;
+            overflow: hidden;
+        }
+        .heart {
+            position: absolute;
+            color: #ff4081;
+            font-size: 24px;
+            animation: float 4s infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(100vh); opacity: 1; }
+            100% { transform: translateY(-10vh); opacity: 0; }
+        }
+        .container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+        h1 { color: #ff4081; }
+        p { color: #333; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💖 Для Веры 💖</h1>
+        <p>Ты самая тёплая и родная</p>
+        <p>Твоя улыбка — как солнце</p>
+        <p>Ты делаешь этот мир лучше</p>
+        <p>Я рад, что ты есть 🤗</p>
+    </div>
+
+    <script>
+        setInterval(() => {
+            let heart = document.createElement('div');
+            heart.className = 'heart';
+            heart.innerHTML = '❤️';
+            heart.style.left = Math.random() * 100 + '%';
+            heart.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 4000);
+        }, 300);
+    </script>
+</body>
+</html>
